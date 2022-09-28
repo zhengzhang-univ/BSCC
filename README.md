@@ -1,3 +1,1 @@
-# TIBEC
-
-## Time Integrated Beam pattern in Equatorial Coordinates
+# Time Integrated Beam pattern in Equatorial Coordinates (TIBEC)
