@@ -27,23 +27,4 @@ class E_field():
         return result.reshape(points.shape)
 
 
-"""
-    def antenna_sph2local_car(self, ant_sph_coords, E_field):
-        coord = np.apply_along_axis(Coord_sph2car_arr, -1, ant_sph_coords)
-        coord = np.einsum("lm, jkm -> jkl", self.pm, coord)
-        JMat = np.apply_along_axis(Field_TransMatr_sph2car, -1, ant_sph_coords)
-        field = np.einsum("jklm, ijkm -> ijkl", JMat, E_field)
-        field = np.einsum("lm, ijkm -> ijkl", self.pm, field)
-        return coord, field
 
-    def local_car2equatorial_sph(self, local_coord, e_field, LST):
-        lcar2eqcar = TransMatr_LocalCar_to_EquatorialCar(LST, self.lat)
-        coord = np.einsum("lm, jkm -> jkl", lcar2eqcar, local_coord)  # Coordinates transformation
-        field = np.einsum("lm, ijkm -> ijkl", lcar2eqcar, e_field)  # Field transformation
-        # from equatorial Cartesian system to equatorial spherical system
-        coord = np.apply_along_axis(Coord_car2sph_arr, -1, coord)
-        JMat = np.apply_along_axis(Field_TransMatr_car2sph, -1, coord)
-        field = np.einsum("jklm, ijkm -> ijkl", JMat, field)
-        return coord, field
-
-"""
