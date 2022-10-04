@@ -2,10 +2,10 @@ from transformation import *
 from FarFieldTransfer import E_field
 from BeamSim import Beam_pattern
 
-path = "/Users/zheng/Dropbox/CarlaShareSept2022/Data 02_09_2022/HIRAX_201_cut.txt"
+path = "/Users/zhengzhang/Dropbox/CarlaShareSept2022/Data 02_09_2022/HIRAX_201_cut.txt"
 alignment_x = np.array([1., 0., 0.])
 alignment_z = np.array([0., 0., 1.])
-antenna_latitude = 0.
+antenna_latitude = 1.
 
 antenna_sph_coords = np.loadtxt(path,
                                 comments=('// >>', '361 181', '#'),
@@ -29,8 +29,8 @@ del e_field
 Sky_coords = np.deg2rad(np.loadtxt(path,
                                 comments=('// >>', '361 181', '#'),
                                 usecols=(0, 1),
-                                max_rows=361 * 181,))[:100,:50]
+                                max_rows=361 * 181,))[:100, :]
 
-test = Beam_pattern(Sky_coords, 1000, 1002, 1)
+test = Beam_pattern(Sky_coords, 1000, 1001, 1)
 
 test.generate_auto_beam(Far_field_obj)

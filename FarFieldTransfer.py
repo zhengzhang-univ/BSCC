@@ -12,8 +12,8 @@ class E_field():
         self.nfreq = e_field_data.shape[0]
         self.field = e_field_data
         self.antenna_latitude = ant_lat
-        self.phi_array = np.unique(ant_coords[:,:,0])
-        self.theta_array = np.unique(ant_coords[:,:,1])
+        self.phi_array = np.unique(ant_coords[:, :, 0])
+        self.theta_array = np.unique(ant_coords[:, :, 1])
 
     def make_interp(self, points, freq_ind):
         aux = points.reshape(-1, 2)
@@ -21,10 +21,12 @@ class E_field():
         for i in np.arange(2):
             interp = RegularGridInterpolator([self.phi_array, self.theta_array],
                                              self.field[freq_ind, :, :, i],
-                                             bounds_error = False,
-                                             fill_value = 0.)
+                                             bounds_error=False,
+                                             fill_value=0.)
             result[:, i] = interp(aux, method='cubic')
         return result.reshape(points.shape)
+
+
 
 
 
