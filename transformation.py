@@ -1,69 +1,87 @@
 import numpy as np
 
 
-def coordinate_mapping_sph2car(sph_coords_array):
-    # sph_coords_array = [phi, the]
-    # confined on the unit sphere, whose centre is the origin.
-    x = np.sin(sph_coords_array[1]) * np.cos(sph_coords_array[0])
-    y = np.sin(sph_coords_array[1]) * np.sin(sph_coords_array[0])
-    z = np.cos(sph_coords_array[1])
-    return x, y, z
+def coordinate_mapping_sph2car(spherical_coords_array):
+    sph_coords_array = spherical_coords_array.reshape(-1, 2)
+    nsky = sph_coords_array.shape[0]
+    theta_array = sph_coords_array[:, 1]
+    phi_array = sph_coords_array[:, 0]
+    car_coords_array = np.zeros(shape=(nsky, 3))
+    car_coords_array[:, 0] = np.sin(theta_array) * np.cos(phi_array)
+    car_coords_array[:, 1] = np.sin(theta_array) * np.sin(phi_array)
+    car_coords_array[:, 2] = np.cos(theta_array)
+    return car_coords_array.reshape(spherical_coords_array.shape[:-1]+(3,))
 
 
-def coordinate_mapping_car2sph(XYZ_array):
-    # confined on the unit sphere, whose centre is the origin.
-    aux = np.sqrt(XYZ_array[0] ** 2 + XYZ_array[1] ** 2)
-    the = np.arctan2(aux, XYZ_array[2])
-    phi = np.arctan2(XYZ_array[1], XYZ_array[0])
-    if phi < 0:
-        phi += 2 * np.pi
-    return the, phi  # in radians
+def coordinate_mapping_car2sph(car_coords_array):
+    XYZ_array = car_coords_array.reshape(-1, 3)
+    nsky = XYZ_array.shape[0]
+    sph_coords_array = np.zeros(shape=(nsky, 2))
+    aux = np.sqrt(XYZ_array[:, 0] ** 2 + XYZ_array[:, 1] ** 2)
+    sph_coords_array[:, 1] = np.arctan2(aux, XYZ_array[:, 2])
+    phi_array = np.arctan2(XYZ_array[:, 1], XYZ_array[:, 0])
 
-"""
-def jacobian_car_sph(phi, the):
-    sin_phi, cos_phi = np.sin(phi), np.cos(phi)
-    sin_the, cos_the = np.sin(the), np.cos(the)
-    matr = np.zeros(shape=(3, 3))
-    matr[:, 0] = sin_the * cos_phi, sin_the * sin_phi, cos_the
-    matr[:, 1] = cos_the * cos_phi, cos_the * sin_phi, -sin_the
-    matr[:, 2] = -sin_the * sin_phi, sin_the * cos_phi, 0.0
-    return matr
+    def correct_phi(phi):
+        if phi < 0:
+            result = phi + 2 * np.pi
+        else:
+            result = phi
+        return result
 
-
-def jacobian_sph_car(phi, the):
-    matr = jacobian_car_sph(phi, the)
-    return np.linalg.inv(matr)
-"""
-
-def rotation_matrix_local2eq(phi, the):
-    sin_phi, cos_phi = np.sin(phi), np.cos(phi)
-    sin_the, cos_the = np.sin(the), np.cos(the)
-    matr = np.zeros(shape=(3, 3))
-    matr[0] = cos_the*cos_phi, cos_the*sin_phi, -sin_the
-    matr[1] = -sin_phi, cos_phi, 0.0
-    matr[2] = sin_the*cos_phi, sin_the*sin_phi, cos_the
-    return matr
-
-def rotation_matrix_sph2car(phi, the):
-    sin_phi, cos_phi = np.sin(phi), np.cos(phi)
-    sin_the, cos_the = np.sin(the), np.cos(the)
-    matr = np.zeros(shape=(3, 3))
-    matr[0] = sin_the*cos_phi, sin_the*sin_phi, cos_the
-    matr[1] = cos_the*cos_phi, cos_the*sin_phi, -sin_the
-    matr[2] = -sin_phi, cos_phi, 0.0
-    return matr
+    func = np.vectorize(correct_phi)
+    sph_coords_array[:, 0] = func(phi_array)
+    return sph_coords_array.reshape(car_coords_array.shape[:-1]+(2,))
 
 
-def Field_sph2car(sph_coords_array):
-    aux = rotation_matrix_sph2car(sph_coords_array[0], sph_coords_array[1])
-    matr = aux[:, 1:]
-    return matr
+def rotation_matrix_local2eq(LSTs, latitude):
+    # return shape: (N_LST, 3, 3)
+    LSTs = np.array(LSTs).flatten()
+    phi_array = (LSTs / 3600.) * (np.pi / 12.0)
+    the_array = (np.pi / 2 - latitude) * np.ones_like(phi_array)
+
+    sin_phi, cos_phi = np.sin(phi_array), np.cos(phi_array)
+    sin_the, cos_the = np.sin(the_array), np.cos(the_array)
+    matrix = np.zeros(shape=(LSTs.shape[0], 3, 3))
+    matrix[:, 0, 0] = cos_the * cos_phi
+    matrix[:, 1, 0] = cos_the * sin_phi
+    matrix[:, 2, 0] = -sin_the
+    matrix[:, 0, 1] = -sin_phi
+    matrix[:, 1, 1] = cos_phi
+    matrix[:, 0, 2] = sin_the * cos_phi
+    matrix[:, 1, 2] = sin_the * sin_phi
+    matrix[:, 2, 2] = cos_the
+    return matrix
 
 
-def Field_car2sph(sph_coords_array):
-    # In spherical coordinates.
-    matr = rotation_matrix_sph2car(sph_coords_array[0], sph_coords_array[1])
-    return matr.T
+def rotation_matrix_eq2local(LSTs, latitude):
+    matrix = rotation_matrix_local2eq(LSTs, latitude)
+    return np.swapaxes(matrix, -1, -2)
+
+
+def rotation_matrix_sph2car(sph_coords_array):
+    def rot_mat(phi_the_array):
+        sin_phi, cos_phi = np.sin(phi_the_array[0]), np.cos(phi_the_array[0])
+        sin_the, cos_the = np.sin(phi_the_array[1]), np.cos(phi_the_array[1])
+        matr = np.zeros(shape=(3, 3))
+        matr[:, 0] = sin_the * cos_phi, sin_the * sin_phi, cos_the
+        matr[:, 1] = cos_the * cos_phi, cos_the * sin_phi, -sin_the
+        matr[:, 2] = -sin_phi, cos_phi, 0.0
+        return matr[:, 1:]
+    result = np.apply_along_axis(rot_mat, -1, sph_coords_array)
+    return result
+
+
+def rotation_matrix_car2sph(sph_coords_array):
+    def rot_mat(phi_the_array):
+        sin_phi, cos_phi = np.sin(phi_the_array[0]), np.cos(phi_the_array[0])
+        sin_the, cos_the = np.sin(phi_the_array[1]), np.cos(phi_the_array[1])
+        matr = np.zeros(shape=(3, 3))
+        matr[:, 0] = sin_the * cos_phi, sin_the * sin_phi, cos_the
+        matr[:, 1] = cos_the * cos_phi, cos_the * sin_phi, -sin_the
+        matr[:, 2] = -sin_phi, cos_phi, 0.0
+        return matr.T
+    result = np.apply_along_axis(rot_mat, -1, sph_coords_array)
+    return result
 
 
 def pointing_matrix(x_Axis, z_Axis):
@@ -79,39 +97,6 @@ def pointing_matrix(x_Axis, z_Axis):
     point_Mat[:, 1] = unit_yAxis
     point_Mat[:, 2] = unit_zAxis
     return point_Mat
-
-
-def ant_Car_to_local_Car(xAxis, zAxis):
-    return pointing_matrix(xAxis, zAxis)
-
-
-def local_Car_to_ant_Car(xAxis, zAxis):
-    return pointing_matrix(xAxis, zAxis).T
-
-
-def Local_Car_to_Equatorial_Car_single_LST(LST, antenna_lat = np.pi / 2 ):
-    # LST should be given in seconds, and lat in radians from -pi/2 to pi/2.
-    phi = (LST / 3600.) * (np.pi / 12.0)
-    the = np.pi / 2 - antenna_lat
-    return rotation_matrix_local2eq(phi, the)
-
-def Equatorial_Car_to_Local_Car_single_LST(LST, antenna_lat = np.pi / 2 ):
-    # LST should be given in seconds, and lat in radians from -pi/2 to pi/2.
-    phi = (LST / 3600.) * (np.pi / 12.0)
-    the = np.pi / 2 - antenna_lat
-    return rotation_matrix(phi, the).T
-
-
-def Local_Car_to_Equatorial_Car(LST_array, lat):
-    # LST_array is a 2d array of shape (ntime,1).
-    LSTs = np.array(LST_array).reshape(-1,1)
-    return np.apply_along_axis(Local_Car_to_Equatorial_Car_single_LST, -1, LSTs,  antenna_lat=lat)
-
-
-def Equatorial_Car_to_Local_Car(LST_array, lat):
-    # LST should be given in seconds, and lat in radians from -pi/2 to pi/2.
-    return np.swapaxes(Local_Car_to_Equatorial_Car(LST_array, lat), -1, -2)
-
 
 
 
