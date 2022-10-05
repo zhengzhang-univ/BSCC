@@ -60,19 +60,20 @@ class E_field():
         result = np.einsum("tsij, tsj -> tsi", field_transform_operator, interpolated_efield_ant)
         return result[:, :, 1:]
 
-    def generate_auto_beam(self, LSTs, sky_coords, freq_ind):
+    def generate_auto_beam_at_LSTs(self, LSTs, sky_coords, freq_ind, time_averaged = False):
         # E_field_integrated = np.mean(self.e_field_in_eq_coords(LSTs, sky_coords, freq_ind),
         #                              axis=0)
-        E_field = self.e_field_in_eq_coords(LSTs, sky_coords, freq_ind)
-        B_matrix = np.einsum("tsl, plm, tsm -> tsp",
-                             np.conjugate(E_field),
-                             pauli_array,
-                             E_field)
+        if time_averaged:
+            E_field = np.mean(self.e_field_in_eq_coords(LSTs, sky_coords, freq_ind), axis=0)
+            B_matrix = np.einsum("sl, plm, sm -> sp",
+                                 np.conjugate(E_field),
+                                 pauli_array,
+                                 E_field)
+        else:
+            E_field = self.e_field_in_eq_coords(LSTs, sky_coords, freq_ind)
+            B_matrix = np.einsum("tsl, plm, tsm -> tsp",
+                                 np.conjugate(E_field),
+                                 pauli_array,
+                                 E_field)
         return B_matrix.real
-
-
-
-
-
-
 
