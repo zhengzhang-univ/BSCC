@@ -98,6 +98,24 @@ def pointing_matrix(x_Axis, z_Axis):
     point_Mat[:, 2] = unit_zAxis
     return point_Mat
 
-
-
-
+### A special case of pointing matrix, or horizontal-antenna rotation matrix ###
+def R_ant_h(beam_angles, yy ):
+    """
+    beam_angles in radians.
+    """
+    beam_angles = np.array(beam_angles)
+    Rot_ant2h = np.zeros(shape=(len(beam_angles), 3, 3))
+    Rot_h2ant = np.zeros(shape=(len(beam_angles), 3, 3))
+    for i in range(len(beam_angles)):
+        b_ang = beam_angles[i]
+        cos_b_ang, sin_b_ang  = np.cos(b_ang), np.sin(b_ang)
+        if yy:
+            alignment_x = np.array([0., cos_b_ang, sin_b_ang])
+            alignment_z = np.array([0., -sin_b_ang, cos_b_ang])
+        else:
+            alignment_x = np.array([cos_b_ang,  0., sin_b_ang])
+            alignment_z = np.array([-sin_b_ang, 0., cos_b_ang])
+        pointing_mat = pointing_matrix(alignment_x, alignment_z)
+        Rot_ant2h[i] = pointing_mat.T
+        Rot_h2ant[i] = pointing_mat
+    return Rot_ant2h, Rot_h2ant
